@@ -1,0 +1,27 @@
+<!DOCTYPE html>
+<html lang="ru">
+<head>
+  <link rel="manifest" href="/manifest.json">
+  <link rel="icon" href="/icons/favicon.ico">
+  <link rel="apple-touch-icon" href="/icons/apple-touch-icon.png">
+  <meta name="theme-color" content="#4285f4">
+  <meta charset="UTF-8">
+  <title>Заметки</title>
+  <link rel="stylesheet" href="https://unpkg.com/chota@latest">
+</head>
+<body>
+
+<h1>Мои Zаметки</h1>
+
+<form id="note-form" class="row">
+  <input class="col-9" type="text" id="note-input"
+         placeholder="Введите заметку" required>
+  <button class="col-3" type="submit">Добавить</button>
+</form>
+
+<ul id="notes-list"></ul>
+
+<script src="app.js"></script>
+
+</body>
+</html>
