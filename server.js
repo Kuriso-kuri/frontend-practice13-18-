@@ -26,6 +26,9 @@ app.use(express.static(path.join(__dirname, './')));
 // Хранилище подписок
 let subscriptions = [];
 
+// Хранилище активных напоминаний: ключ - id заметки, значение - объект с таймером и данными
+const reminders = new Map();
+
 const sslOptions = {
   key: fs.readFileSync(path.join(__dirname, 'localhost+2-key.pem')),
   cert: fs.readFileSync(path.join(__dirname, 'localhost+2.pem'))
@@ -57,6 +60,27 @@ io.on('connection', (socket) => {
     });
   });
 
+  socket.on('newReminder', (reminder) => {
+    const { id, text, reminderTime } = reminder;
+    const delay = reminderTime - Date.now();
+    if (delay <= 0) return;
+
+    const timeoutId = setTimeout(() => {
+      const payload = JSON.stringify({
+        title: '!!! Напоминание',
+        body: text,
+        reminderId: id
+      });
+      subscriptions.forEach(sub => {
+        webpush.sendNotification(sub, payload).catch(err =>
+          console.error('Push error:', err));
+      });
+      reminders.delete(id);
+    }, delay);
+
+    reminders.set(id, { timeoutId, text, reminderTime });
+  });
+
   socket.on('disconnect', () => {
     console.log('Клиент отключён:', socket.id);
   });
@@ -72,6 +96,38 @@ app.post('/unsubscribe', (req, res) => {
   const { endpoint } = req.body;
   subscriptions = subscriptions.filter(sub => sub.endpoint !== endpoint);
   res.status(200).json({ message: 'Подписка удалена' });
+});
+
+app.post('/snooze', (req, res) => {
+  const reminderId = parseInt(req.query.reminderId, 10);
+  if (!reminderId || !reminders.has(reminderId)) {
+    return res.status(404).json({ error: 'Reminder not found' });
+  }
+
+  const reminder = reminders.get(reminderId);
+  clearTimeout(reminder.timeoutId);
+
+  const newDelay = 5 * 60 * 1000;
+  const newTimeoutId = setTimeout(() => {
+    const payload = JSON.stringify({
+      title: 'Напоминание отложено',
+      body: reminder.text,
+      reminderId: reminderId
+    });
+    subscriptions.forEach(sub => {
+      webpush.sendNotification(sub, payload).catch(err =>
+        console.error('Push error:', err));
+    });
+    reminders.delete(reminderId);
+  }, newDelay);
+
+  reminders.set(reminderId, {
+    timeoutId: newTimeoutId,
+    text: reminder.text,
+    reminderTime: Date.now() + newDelay
+  });
+
+  res.status(200).json({ message: 'Reminder snoozed for 5 minutes' });
 });
 
 const PORT = 3001;

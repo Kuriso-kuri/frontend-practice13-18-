@@ -90,25 +90,40 @@ async function unsubscribeFromPush() {
 function initNotes() {
   const form = document.getElementById('note-form');
   const input = document.getElementById('note-input');
+  const reminderForm = document.getElementById('reminder-form');
+  const reminderText = document.getElementById('reminder-text');
+  const reminderTime = document.getElementById('reminder-time');
   const list = document.getElementById('notes-list');
 
   function loadNotes() {
     const notes = JSON.parse(localStorage.getItem('notes') || '[]');
     list.innerHTML = notes.map(note => {
       const text = typeof note === 'object' ? note.text : note;
-      return `<li class="card" style="margin-bottom: 0.5rem; padding: 0.5rem;">${text}</li>`;
+      let reminderInfo = '';
+      if (note.reminder) {
+        const date = new Date(note.reminder);
+        reminderInfo = `<br><small>!!! Напоминание: ${date.toLocaleString()}</small>`;
+      }
+      return `<li class="card" style="margin-bottom: 0.5rem; padding: 0.5rem;">${text}${reminderInfo}</li>`;
     }).join('');
   }
 
-  function addNote(text, datetime) {
+  function addNote(text, reminderTimestamp = null) {
     const notes = JSON.parse(localStorage.getItem('notes') || '[]');
-    const newNote = { id: Date.now(), text, datetime: datetime || '' };
+    const newNote = { id: Date.now(), text, reminder: reminderTimestamp };
     notes.push(newNote);
     localStorage.setItem('notes', JSON.stringify(notes));
     loadNotes();
 
-    // Отправляем событие на сервер
-    socket.emit('newTask', { text, timestamp: Date.now() });
+    if (reminderTimestamp) {
+      socket.emit('newReminder', {
+        id: newNote.id,
+        text: text,
+        reminderTime: reminderTimestamp
+      });
+    } else {
+      socket.emit('newTask', { text, timestamp: Date.now() });
+    }
   }
 
   form.addEventListener('submit', (e) => {
@@ -117,6 +132,22 @@ function initNotes() {
     if (text) {
       addNote(text);
       input.value = '';
+    }
+  });
+
+  reminderForm.addEventListener('submit', (e) => {
+    e.preventDefault();
+    const text = reminderText.value.trim();
+    const datetime = reminderTime.value;
+    if (text && datetime) {
+      const timestamp = new Date(datetime).getTime();
+      if (timestamp > Date.now()) {
+        addNote(text, timestamp);
+        reminderText.value = '';
+        reminderTime.value = '';
+      } else {
+        alert('Дата напоминания должна быть в будущем');
+      }
     }
   });
 
