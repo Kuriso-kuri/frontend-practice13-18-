@@ -1,4 +1,4 @@
-const CACHE_NAME = 'app-shell-v2';
+const CACHE_NAME = 'app-shell-v3';
 const DYNAMIC_CACHE_NAME = 'dynamic-content-v1';
 
 const ASSETS = [
