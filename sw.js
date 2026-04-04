@@ -34,6 +34,21 @@ self.addEventListener('activate', event => {
   );
 });
 
+self.addEventListener('push', (event) => {
+  let data = { title: 'Новое уведомление', body: '' };
+  if (event.data) {
+    data = event.data.json();
+  }
+  const options = {
+    body: data.body,
+    icon: '/icons/android-chrome-192x192.png',
+    badge: '/icons/favicon-32x32.png'
+  };
+  event.waitUntil(
+    self.registration.showNotification(data.title, options)
+  );
+});
+
 self.addEventListener('fetch', event => {
   const url = new URL(event.request.url);
 
